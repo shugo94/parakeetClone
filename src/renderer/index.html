@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.anthropic.com https://api.openai.com" />
+    <title>Interview AI</title>
+    <style>
+      html, body { margin: 0; padding: 0; overflow: hidden; background: transparent; }
+      * { box-sizing: border-box; -webkit-user-select: none; user-select: none; }
+      input, textarea { -webkit-user-select: text !important; user-select: text !important; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./src/main.tsx"></script>
+  </body>
+</html>
