@@ -259,26 +259,54 @@ function buildSystemPrompt(question: string): string {
 
   // DSA / Algorithms
   if (/\b(array|linked.?list|tree|graph|dp|dynamic.prog|sort|binary.search|recursion|stack|queue|heap|hash.?map|bfs|dfs|dijkstra|backtrack|two.?pointer|sliding.?window|trie|segment|bit.manip|greedy|topolog)\b/.test(q)) {
-    return `You are a DSA expert in a live technical interview. Be ultra-concise.
+    return `You are a DSA expert in a live Java technical interview. Always follow this exact structure:
 
-**Pattern:** <name, 1 line>
-**Approach:** <key insight, 1-2 lines>
+## Brute Force
+**Idea:** <what naive approach does, 1-2 lines>
+\`\`\`java
+<brute force code, clean Java>
+\`\`\`
+**Dry Run:** <trace through a small example step by step, e.g. input=[2,7,11], target=9 → check 2+7=9 ✓>
 **Complexity:** Time O(?) | Space O(?)
+
+---
+
+## Optimized
+**Idea:** <key insight / pattern name that makes it faster, 1-2 lines>
+\`\`\`java
+<optimized code, clean Java>
 \`\`\`
-<clean code, 5-10 lines max — Java or pseudocode>
-\`\`\`
-**Gotcha:** <1 interview-critical insight>`
+**Dry Run:** <trace same example through optimized approach step by step>
+**Complexity:** Time O(?) | Space O(?)
+
+**Gotcha:** <1 tricky edge case or interview tip to mention>`
   }
 
-  // Java / OOP
-  if (/\b(java|jvm|spring|hibernate|thread|synchronize|volatile|gc|garbage.collect|generics|stream.api|lambda|functional|interface|abstract|overload|override|polymorphism|inheritance|encapsulat|final|static|exception|concurrent|executor|future|optional)\b/.test(q)) {
-    return `You are a senior Java engineer in a technical interview. Be concise.
+  // Java / OOP + coding problems
+  if (/\b(java|jvm|spring|hibernate|thread|synchronize|volatile|gc|garbage.collect|generics|stream.api|lambda|functional|interface|abstract|overload|override|polymorphism|inheritance|encapsulat|final|static|exception|concurrent|executor|future|optional|write.?(a|the|an)|implement|program|code|find|count|check|reverse|palindrome|anagram|fibonacci|factorial|prime|string|integer|number)\b/.test(q)) {
+    return `You are a senior Java engineer in a live technical interview. For any coding problem always follow this exact structure:
 
-**Answer:** <core concept, 2-3 lines>
+## Brute Force
+**Idea:** <naive approach, 1-2 lines>
 \`\`\`java
-<example code, 4-6 lines>
+<brute force Java code>
 \`\`\`
-**Key point:** <interview-critical detail, 1 line>`
+**Dry Run:** <trace a small example step by step>
+**Complexity:** Time O(?) | Space O(?)
+
+---
+
+## Optimized
+**Idea:** <what makes this faster/better, key insight in 1-2 lines>
+\`\`\`java
+<optimized Java code>
+\`\`\`
+**Dry Run:** <trace same example through optimized approach>
+**Complexity:** Time O(?) | Space O(?)
+
+**Key point:** <most important interview insight, edge case, or Java-specific detail>
+
+For concept-only questions (no coding needed), answer directly in 3-4 lines with one code snippet if helpful.`
   }
 
   // Selenium / Test Automation
@@ -330,27 +358,46 @@ function buildSystemPrompt(question: string): string {
   }
 
   // Default: generic interview answer
-  return `You are an expert technical interview coach. Give a sharp, concise answer.
+  return `You are an expert technical interview coach in a live interview.
 
-Rules:
-- Lead with the key point in sentence 1
-- Max 5 lines total
-- Code only if essential (max 5 lines)
-- End with one interview-specific insight
+If the question involves coding or a programming problem, always use this structure:
 
-Tone: confident, clear, ready to impress.`
+## Brute Force
+**Idea:** <naive approach, 1-2 lines>
+\`\`\`java
+<brute force code>
+\`\`\`
+**Dry Run:** <trace a small example step by step>
+**Complexity:** Time O(?) | Space O(?)
+
+---
+
+## Optimized
+**Idea:** <key insight, 1-2 lines>
+\`\`\`java
+<optimized code>
+\`\`\`
+**Dry Run:** <trace same example>
+**Complexity:** Time O(?) | Space O(?)
+
+**Key point:** <interview-critical insight>
+
+If it is a concept/theory question, answer in 3-4 sharp lines. Tone: confident, clear, ready to impress.`
 }
 
 // ─── App Lifecycle ────────────────────────────────────────────────────────────
 
 app.whenReady().then(() => {
-  // Grant microphone permission automatically (needed for Web Speech API)
+  // Grant mic + speech permissions needed for Web Speech API
   session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
-    if (permission === 'media' || permission === 'microphone') {
-      callback(true)
-    } else {
-      callback(false)
-    }
+    const allowed = ['media', 'microphone', 'speech', 'audio-capture']
+    callback(allowed.includes(permission))
+  })
+
+  // Also needed in newer Electron versions — sync permission check
+  session.defaultSession.setPermissionCheckHandler((_wc, permission) => {
+    const allowed = ['media', 'microphone', 'speech', 'audio-capture']
+    return allowed.includes(permission)
   })
 
   createOverlayWindow()
@@ -384,6 +431,28 @@ app.whenReady().then(() => {
   // ── IPC Handlers ───────────────────────────────────────────────────────────
   ipcMain.handle('get-config', () => loadConfig())
   ipcMain.handle('save-config', (_event, partial: Partial<Config>) => saveConfig(partial))
+
+  ipcMain.handle('transcribe-audio', async (_event, arrayBuffer: ArrayBuffer, mimeType: string) => {
+    const cfg = loadConfig()
+
+    if (cfg.provider !== 'groq' && cfg.provider !== 'openai') {
+      throw new Error(
+        'Mic transcription needs Groq or OpenAI. Switch provider in ⚙ Settings, or type your question manually.'
+      )
+    }
+
+    const { default: OpenAI, toFile } = await import('openai')
+    const clientOptions: ConstructorParameters<typeof OpenAI>[0] = { apiKey: cfg.apiKey }
+    if (cfg.provider === 'groq') clientOptions.baseURL = 'https://api.groq.com/openai/v1'
+
+    const client = new OpenAI(clientOptions)
+    const buffer = Buffer.from(arrayBuffer)
+    const file = await toFile(buffer, 'audio.webm', { type: mimeType || 'audio/webm' })
+    const model = cfg.provider === 'groq' ? 'whisper-large-v3-turbo' : 'whisper-1'
+
+    const result = await client.audio.transcriptions.create({ file, model, language: 'en' })
+    return result.text
+  })
 
   ipcMain.on('ai-query', handleAIQuery)
   ipcMain.on('ai-abort', () => {

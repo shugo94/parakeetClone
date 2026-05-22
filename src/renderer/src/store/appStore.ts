@@ -34,6 +34,10 @@ interface AppStore {
   contentProtection: boolean
   toggleContentProtection: () => void
 
+  // Always-on mic mode
+  alwaysOn: boolean
+  toggleAlwaysOn: () => void
+
   // Settings panel visibility
   showSettings: boolean
   setShowSettings: (v: boolean) => void
@@ -95,6 +99,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
     // Also persist
     window.api.saveConfig({ contentProtection: val } as Record<string, unknown>)
   },
+
+  alwaysOn: false,
+  toggleAlwaysOn: () => set((s) => ({ alwaysOn: !s.alwaysOn })),
 
   showSettings: false,
   setShowSettings: (showSettings) => set({ showSettings }),

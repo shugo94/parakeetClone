@@ -8,10 +8,11 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  cursor: default !important;
 }
 
 :root {
-  --bg:           rgba(8, 10, 20, 0.90);
+  --bg:           rgba(8, 10, 20, 0.55);
   --bg-hover:     rgba(255, 255, 255, 0.05);
   --bg-active:    rgba(255, 255, 255, 0.09);
   --border:       rgba(255, 255, 255, 0.08);
@@ -259,7 +260,6 @@ li {
   padding: 6px 12px;
   border-top: 1px solid var(--border);
   min-height: 32px;
-  cursor: text;
   transition: background 0.12s;
   font-size: 11.5px;
 }
@@ -271,7 +271,6 @@ li {
 .transcript-bar.editing {
   background: rgba(129, 140, 248, 0.06);
   border-top-color: rgba(129, 140, 248, 0.25);
-  cursor: default;
 }
 
 .bar-icon { font-size: 12px; flex-shrink: 0; opacity: 0.6; }
@@ -322,7 +321,6 @@ li {
   width: 22px;
   height: 22px;
   border-radius: 5px;
-  cursor: pointer;
   font-size: 12px;
   display: flex;
   align-items: center;
@@ -350,7 +348,6 @@ li {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  cursor: pointer;
   padding: 4px 8px;
   border-radius: 6px;
   font-size: 12px;
@@ -374,6 +371,19 @@ li {
 
 .hk-btn.icon-only { padding: 4px 6px; }
 
+/* Always-on active */
+.hk-btn.btn-always-on {
+  color: var(--red);
+  background: rgba(248,113,113,0.12);
+  animation: always-on-pulse 2s ease-in-out infinite;
+}
+.hk-btn.btn-always-on:hover { background: rgba(248,113,113,0.2); }
+
+@keyframes always-on-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
+
 /* Listening active */
 .hk-btn.btn-live {
   color: var(--red);
@@ -387,7 +397,7 @@ li {
 /* Disabled */
 .hk-btn.btn-disabled {
   opacity: 0.35;
-  cursor: not-allowed;
+
   pointer-events: none;
 }
 
@@ -441,7 +451,6 @@ li {
   background: none;
   border: none;
   color: var(--text-muted);
-  cursor: pointer;
   font-size: 14px;
   padding: 2px 7px;
   border-radius: 5px;
@@ -489,7 +498,6 @@ li {
   gap: 6px;
   font-size: 12px;
   color: var(--text-dim);
-  cursor: pointer;
   padding: 6px 10px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
@@ -513,7 +521,6 @@ li {
   font-size: 12px;
   font-family: inherit;
   width: 100%;
-  cursor: pointer;
   outline: none;
 }
 .sm-select:focus { border-color: var(--accent); }
@@ -545,7 +552,6 @@ li {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 6px 9px;
-  cursor: pointer;
   font-size: 13px;
   transition: background 0.1s;
   color: var(--text-muted);
@@ -576,7 +582,6 @@ li {
   border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 600;
-  cursor: pointer;
   transition: background 0.15s, transform 0.1s;
   font-family: inherit;
 }

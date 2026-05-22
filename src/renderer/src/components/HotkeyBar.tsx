@@ -16,7 +16,9 @@ export function HotkeyBar({ onToggleListen, onClear, onPin, onHide }: Props) {
     showSettings,
     setShowSettings,
     contentProtection,
-    toggleContentProtection
+    toggleContentProtection,
+    alwaysOn,
+    toggleAlwaysOn
   } = useAppStore()
 
   const isListening = appState === 'listening'
@@ -24,12 +26,22 @@ export function HotkeyBar({ onToggleListen, onClear, onPin, onHide }: Props) {
 
   return (
     <div className="hotkey-bar">
+      {/* Always-on toggle */}
+      <button
+        className={`hk-btn${alwaysOn ? ' btn-always-on' : ''}`}
+        onClick={toggleAlwaysOn}
+        title={alwaysOn ? 'Always-on mic: ON — click to disable' : 'Always-on mic: OFF — auto-listens after each answer'}
+      >
+        {alwaysOn ? '🔴' : '⚪'}
+        <span className="hk-label">{alwaysOn ? 'Auto' : 'Auto'}</span>
+      </button>
+
       {/* Mic toggle */}
       <button
-        className={`hk-btn${isListening ? ' btn-live' : ''}${isThinking ? ' btn-disabled' : ''}`}
+        className={`hk-btn${isListening ? ' btn-live' : ''}${isThinking || alwaysOn ? ' btn-disabled' : ''}`}
         onClick={onToggleListen}
-        disabled={isThinking}
-        title={isListening ? 'Stop listening (⌘⇧Space)' : 'Start mic (⌘⇧Space)'}
+        disabled={isThinking || alwaysOn}
+        title={alwaysOn ? 'Disable Auto mode to use manual mic' : isListening ? 'Stop listening (⌘⇧Space)' : 'Start mic (⌘⇧Space)'}
       >
         {isListening ? '⏹' : '🎙'}
         <span className="hk-label">{isListening ? 'Stop' : 'Mic'}</span>
