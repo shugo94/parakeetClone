@@ -26,6 +26,11 @@ const api = {
     ipcRenderer.on('ai-error', fn)
     return () => ipcRenderer.removeListener('ai-error', fn)
   },
+  onAIRetry: (cb: () => void) => {
+    const fn = () => cb()
+    ipcRenderer.on('ai-retry', fn)
+    return () => ipcRenderer.removeListener('ai-retry', fn)
+  },
 
   // ── Hotkeys from main process ────────────────────────────────────────────────
   onHotkey: (cb: (action: string) => void) => {

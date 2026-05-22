@@ -1,6 +1,6 @@
 export interface Config {
   apiKey: string
-  provider: 'anthropic' | 'openai'
+  provider: 'anthropic' | 'openai' | 'groq' | 'gemini' | 'openrouter'
   model: string
   contentProtection: boolean
   overlayX?: number

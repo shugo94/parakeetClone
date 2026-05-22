@@ -9,7 +9,7 @@ const isDev = !app.isPackaged
 
 interface Config {
   apiKey: string
-  provider: 'anthropic' | 'openai'
+  provider: 'anthropic' | 'openai' | 'groq' | 'gemini' | 'openrouter'
   model: string
   contentProtection: boolean
   overlayX: number
@@ -34,8 +34,8 @@ function loadConfig(): Config {
 function defaultConfig(): Config {
   return {
     apiKey: '',
-    provider: 'anthropic',
-    model: 'claude-3-5-sonnet-20241022',
+    provider: 'groq',
+    model: 'llama-3.3-70b-versatile',
     contentProtection: true,
     overlayX: 30,
     overlayY: 80,
@@ -120,6 +120,10 @@ function createOverlayWindow() {
 
 let currentAbort: AbortController | null = null
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 async function handleAIQuery(event: Electron.IpcMainEvent, payload: { transcript: string }) {
   const cfg = loadConfig()
   const { transcript } = payload
@@ -136,8 +140,49 @@ async function handleAIQuery(event: Electron.IpcMainEvent, payload: { transcript
 
   const systemPrompt = buildSystemPrompt(transcript)
 
-  try {
-    if (cfg.provider === 'anthropic') {
+  const MAX_RETRIES = 3
+  let attempt = 0
+
+  while (attempt <= MAX_RETRIES) {
+    try {
+      await runAIRequest(event, cfg, transcript, systemPrompt, signal)
+      return
+    } catch (err: unknown) {
+      if ((err as Error)?.name === 'AbortError') return
+      const status = (err as { status?: number })?.status
+      if (status === 429 && attempt < MAX_RETRIES) {
+        const delay = 2000 * 2 ** attempt // 2s, 4s, 8s
+        if (!event.sender.isDestroyed()) {
+          event.sender.send('ai-error', `Rate limit hit — retrying in ${delay / 1000}s... (attempt ${attempt + 1}/${MAX_RETRIES})`)
+        }
+        await sleep(delay)
+        // Clear the transient error before retrying
+        if (!event.sender.isDestroyed()) {
+          event.sender.send('ai-retry', null)
+        }
+        attempt++
+        continue
+      }
+      console.error('[AI Error]', err)
+      if (!event.sender.isDestroyed()) {
+        const msg = status === 429
+          ? 'Rate limit exceeded. Wait a moment then try again, or switch to Groq (free & faster).'
+          : (err as Error).message || 'Request failed. Check your API key.'
+        event.sender.send('ai-error', msg)
+      }
+      return
+    }
+  }
+}
+
+async function runAIRequest(
+  event: Electron.IpcMainEvent,
+  cfg: Config,
+  transcript: string,
+  systemPrompt: string,
+  signal: AbortSignal
+): Promise<void> {
+  if (cfg.provider === 'anthropic') {
       const { default: Anthropic } = await import('@anthropic-ai/sdk')
       const client = new Anthropic({ apiKey: cfg.apiKey })
 
@@ -161,13 +206,30 @@ async function handleAIQuery(event: Electron.IpcMainEvent, payload: { transcript
       if (!event.sender.isDestroyed()) {
         event.sender.send('ai-done', null)
       }
-    } else if (cfg.provider === 'openai') {
+    } else if (cfg.provider === 'openai' || cfg.provider === 'groq' || cfg.provider === 'gemini') {
       const { default: OpenAI } = await import('openai')
-      const client = new OpenAI({ apiKey: cfg.apiKey })
+
+      const baseURLMap: Record<string, string> = {
+        groq: 'https://api.groq.com/openai/v1',
+        gemini: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+        openrouter: 'https://openrouter.ai/api/v1'
+      }
+
+      const defaultModelMap: Record<string, string> = {
+        openai: 'gpt-4o',
+        groq: 'llama-3.3-70b-versatile',
+        gemini: 'gemini-2.0-flash-lite',
+        openrouter: 'deepseek/deepseek-chat-v3-0324:free'
+      }
+
+      const clientOptions: ConstructorParameters<typeof OpenAI>[0] = { apiKey: cfg.apiKey }
+      if (baseURLMap[cfg.provider]) clientOptions.baseURL = baseURLMap[cfg.provider]
+
+      const client = new OpenAI(clientOptions)
 
       const stream = await client.chat.completions.create(
         {
-          model: cfg.model || 'gpt-4o',
+          model: cfg.model || defaultModelMap[cfg.provider],
           max_tokens: 600,
           stream: true,
           messages: [
@@ -188,13 +250,6 @@ async function handleAIQuery(event: Electron.IpcMainEvent, payload: { transcript
         event.sender.send('ai-done', null)
       }
     }
-  } catch (err: unknown) {
-    if ((err as Error)?.name === 'AbortError') return
-    console.error('[AI Error]', err)
-    if (!event.sender.isDestroyed()) {
-      event.sender.send('ai-error', (err as Error).message || 'Request failed. Check your API key.')
-    }
-  }
 }
 
 // ─── Prompt Engineering ───────────────────────────────────────────────────────

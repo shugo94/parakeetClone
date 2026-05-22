@@ -36,11 +36,16 @@ export default function App() {
       setAppState('idle')
     })
     const offError = window.api.onAIError((err) => setError(err))
+    const offRetry = window.api.onAIRetry(() => {
+      setError(null)
+      setAppState('thinking')
+    })
 
     return () => {
       offToken()
       offDone()
       offError()
+      offRetry()
     }
   }, [appendToken, finalizeAnswer, setAppState, setError])
 

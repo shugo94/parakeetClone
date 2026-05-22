@@ -11,12 +11,77 @@ const ANTHROPIC_MODELS = [
 
 const OPENAI_MODELS = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo']
 
+// Free tier models
+const GROQ_MODELS = [
+  'llama-3.3-70b-versatile',
+  'llama-4-scout-17b-16e-instruct',
+  'llama-4-maverick-17b-128e-instruct',
+  'llama-3.1-8b-instant',
+  'llama-3.2-11b-vision-preview',
+  'llama-3.2-3b-preview',
+  'deepseek-r1-distill-llama-70b',
+  'qwen-qwq-32b',
+  'mixtral-8x7b-32768',
+  'gemma2-9b-it',
+  'compound-beta'
+]
+
+const GEMINI_MODELS = [
+  'gemini-2.5-flash-preview-05-20',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
+  'gemini-1.5-flash',
+  'gemini-1.5-flash-8b'
+]
+
+// OpenRouter free models (all have :free suffix — no cost, no card needed)
+const OPENROUTER_MODELS = [
+  'deepseek/deepseek-chat-v3-0324:free',
+  'deepseek/deepseek-r1-0528:free',
+  'deepseek/deepseek-r1:free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'meta-llama/llama-3.1-8b-instruct:free',
+  'google/gemma-3-27b-it:free',
+  'google/gemma-3-12b-it:free',
+  'mistralai/mistral-7b-instruct:free',
+  'qwen/qwen3-8b:free',
+  'qwen/qwen3-14b:free',
+  'qwen/qwen3-30b-a3b:free',
+  'microsoft/phi-3-mini-128k-instruct:free',
+  'microsoft/phi-3-medium-128k-instruct:free',
+  'nvidia/llama-3.1-nemotron-70b-instruct:free'
+]
+
+const PROVIDER_MODELS: Record<string, string[]> = {
+  anthropic: ANTHROPIC_MODELS,
+  openai: OPENAI_MODELS,
+  groq: GROQ_MODELS,
+  gemini: GEMINI_MODELS,
+  openrouter: OPENROUTER_MODELS
+}
+
+const PROVIDER_DEFAULT_MODEL: Record<string, string> = {
+  anthropic: ANTHROPIC_MODELS[0],
+  openai: OPENAI_MODELS[0],
+  groq: GROQ_MODELS[0],
+  gemini: GEMINI_MODELS[0],
+  openrouter: OPENROUTER_MODELS[0]
+}
+
+const PROVIDER_KEY_HINT: Record<string, string> = {
+  anthropic: 'console.anthropic.com',
+  openai: 'platform.openai.com',
+  groq: 'console.groq.com — FREE tier',
+  gemini: 'aistudio.google.com — FREE tier',
+  openrouter: 'openrouter.ai — FREE models (no card needed)'
+}
+
 export function SettingsModal() {
   const { config, setConfig, setShowSettings, contentProtection } = useAppStore()
   const [form, setForm] = useState<Config>({
     apiKey: '',
-    provider: 'anthropic',
-    model: 'claude-3-5-sonnet-20241022',
+    provider: 'groq',
+    model: GROQ_MODELS[0],
     contentProtection: true
   })
   const [saved, setSaved] = useState(false)
@@ -26,15 +91,10 @@ export function SettingsModal() {
     if (config) setForm(config)
   }, [config])
 
-  const models = form.provider === 'anthropic' ? ANTHROPIC_MODELS : OPENAI_MODELS
+  const models = PROVIDER_MODELS[form.provider] ?? []
 
-  // When provider changes, reset model
-  const handleProviderChange = (provider: 'anthropic' | 'openai') => {
-    setForm({
-      ...form,
-      provider,
-      model: provider === 'anthropic' ? ANTHROPIC_MODELS[0] : OPENAI_MODELS[0]
-    })
+  const handleProviderChange = (provider: Config['provider']) => {
+    setForm({ ...form, provider, model: PROVIDER_DEFAULT_MODEL[provider] })
   }
 
   const handleSave = async () => {
@@ -63,15 +123,23 @@ export function SettingsModal() {
           <div className="sm-field">
             <label className="sm-label">AI Provider</label>
             <div className="sm-radio-group">
-              {(['anthropic', 'openai'] as const).map((p) => (
-                <label key={p} className={`sm-radio${form.provider === p ? ' selected' : ''}`}>
+              {(
+                [
+                  { id: 'groq', label: '🆓 Groq (Free)' },
+                  { id: 'gemini', label: '🆓 Gemini (Free)' },
+                  { id: 'openrouter', label: '🆓 OpenRouter (Free)' },
+                  { id: 'anthropic', label: '🔷 Claude (Anthropic)' },
+                  { id: 'openai', label: '🟢 OpenAI GPT' }
+                ] as { id: Config['provider']; label: string }[]
+              ).map(({ id, label }) => (
+                <label key={id} className={`sm-radio${form.provider === id ? ' selected' : ''}`}>
                   <input
                     type="radio"
                     name="provider"
-                    checked={form.provider === p}
-                    onChange={() => handleProviderChange(p)}
+                    checked={form.provider === id}
+                    onChange={() => handleProviderChange(id)}
                   />
-                  {p === 'anthropic' ? '🔷 Claude (Anthropic)' : '🟢 OpenAI GPT'}
+                  {label}
                 </label>
               ))}
             </div>
@@ -95,17 +163,13 @@ export function SettingsModal() {
           <div className="sm-field">
             <label className="sm-label">
               API Key
-              <span className="sm-hint">
-                {form.provider === 'anthropic'
-                  ? ' — console.anthropic.com'
-                  : ' — platform.openai.com'}
-              </span>
+              <span className="sm-hint"> — {PROVIDER_KEY_HINT[form.provider]}</span>
             </label>
             <div className="sm-input-row">
               <input
                 type={showKey ? 'text' : 'password'}
                 className="sm-input"
-                placeholder={`sk-${form.provider === 'anthropic' ? 'ant-' : ''}...`}
+                placeholder="paste your api key..."
                 value={form.apiKey}
                 onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
                 autoComplete="off"
