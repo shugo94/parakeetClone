@@ -4,16 +4,20 @@ import { useAppStore } from '../store/appStore'
 export function AnswerPanel() {
   const { streamingAnswer, pinnedAnswer, error, appState, messages } = useAppStore()
   const scrollRef = useRef<HTMLDivElement>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll as tokens arrive
+  // Auto-scroll to bottom whenever new content arrives
   useEffect(() => {
-    if (scrollRef.current && appState === 'answering') {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [streamingAnswer, appState])
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [streamingAnswer, messages.length, appState])
+
+  const hasHistory = messages.length > 0
+  const isStreaming = appState === 'answering'
+  const isThinking = appState === 'thinking'
+  const hasContent = hasHistory || streamingAnswer || pinnedAnswer
 
   // ── Error ──────────────────────────────────────────────────────────────────
-  if (error) {
+  if (error && !hasContent) {
     return (
       <div className="answer-panel state-error">
         <span className="icon-err">⚠</span>
@@ -22,22 +26,8 @@ export function AnswerPanel() {
     )
   }
 
-  // ── Thinking ───────────────────────────────────────────────────────────────
-  if (appState === 'thinking') {
-    return (
-      <div className="answer-panel state-thinking">
-        <div className="dots">
-          <span /><span /><span />
-        </div>
-        <p className="thinking-label">Thinking...</p>
-      </div>
-    )
-  }
-
   // ── Empty / idle ───────────────────────────────────────────────────────────
-  const displayAnswer = streamingAnswer || messages[0]?.answer || ''
-
-  if (!displayAnswer && appState === 'idle' && !pinnedAnswer) {
+  if (!hasContent && !isThinking) {
     return (
       <div className="answer-panel state-empty">
         <div className="mic-icon">🎙</div>
@@ -52,27 +42,68 @@ export function AnswerPanel() {
     )
   }
 
-  // ── Pinned (shown when no active stream) ───────────────────────────────────
-  if (pinnedAnswer && !streamingAnswer) {
-    return (
-      <div className="answer-panel" ref={scrollRef}>
-        <div className="pin-badge">📌 Pinned</div>
-        <div
-          className="answer-text"
-          dangerouslySetInnerHTML={{ __html: formatAnswer(pinnedAnswer) }}
-        />
-      </div>
-    )
-  }
+  // History is stored newest-first — reverse for display (oldest at top)
+  const orderedMessages = [...messages].reverse()
 
-  // ── Active / streamed answer ───────────────────────────────────────────────
   return (
     <div className="answer-panel" ref={scrollRef}>
-      <div
-        className={`answer-text${appState === 'answering' ? ' streaming' : ''}`}
-        dangerouslySetInnerHTML={{ __html: formatAnswer(displayAnswer) }}
-      />
-      {appState === 'answering' && <span className="cursor" aria-hidden="true">▊</span>}
+      {/* Pinned answer at top if set */}
+      {pinnedAnswer && (
+        <div className="qa-block qa-pinned">
+          <div className="pin-badge">📌 Pinned</div>
+          <div
+            className="answer-text"
+            dangerouslySetInnerHTML={{ __html: formatAnswer(pinnedAnswer) }}
+          />
+          <div className="qa-divider" />
+        </div>
+      )}
+
+      {/* History: all past Q&A pairs */}
+      {orderedMessages.map((msg) => (
+        <div key={msg.id} className="qa-block">
+          <div className="qa-question">
+            {msg.transcript.length > 80
+              ? msg.transcript.slice(0, 77) + '…'
+              : msg.transcript}
+          </div>
+          <div
+            className="answer-text"
+            dangerouslySetInnerHTML={{ __html: formatAnswer(msg.answer) }}
+          />
+          <div className="qa-divider" />
+        </div>
+      ))}
+
+      {/* Currently streaming answer */}
+      {(isStreaming || isThinking || streamingAnswer) && (
+        <div className="qa-block qa-active">
+          {isThinking && !streamingAnswer && (
+            <div className="state-thinking-inline">
+              <div className="dots"><span /><span /><span /></div>
+              <p className="thinking-label">Thinking...</p>
+            </div>
+          )}
+          {streamingAnswer && (
+            <div
+              className={`answer-text${isStreaming ? ' streaming' : ''}`}
+              dangerouslySetInnerHTML={{ __html: formatAnswer(streamingAnswer) }}
+            />
+          )}
+          {isStreaming && <span className="cursor" aria-hidden="true">▊</span>}
+        </div>
+      )}
+
+      {/* Error inline (when there's already history) */}
+      {error && hasContent && (
+        <div className="qa-block state-error-inline">
+          <span className="icon-err">⚠</span>
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* Scroll anchor */}
+      <div ref={bottomRef} />
     </div>
   )
 }
@@ -84,6 +115,8 @@ function formatAnswer(text: string): string {
 
   return (
     text
+      // H2 headers ## Text
+      .replace(/^## (.+)$/gm, '<p class="section-h2">$1</p>')
       // Fenced code blocks ```lang\ncode\n```
       .replace(
         /```[\w]*\n?([\s\S]*?)```/g,
@@ -93,11 +126,13 @@ function formatAnswer(text: string): string {
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       // Inline code `code`
       .replace(/`([^`\n]+)`/g, '<code class="inline-code">$1</code>')
+      // Horizontal rule ---
+      .replace(/^---$/gm, '<hr class="qa-hr"/>')
       // Bullet lines starting with - or •
       .replace(/^[\-•]\s+(.+)$/gm, '<li>$1</li>')
       // Wrap consecutive <li>s
       .replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>')
-      // Headers **Bold:** pattern (common in our prompts)
+      // Headers **Bold:** pattern
       .replace(/^\*\*(.+?):\*\*(.*)$/gm, '<p class="section-head">$1:$2</p>')
       // Line breaks outside code blocks
       .replace(/\n/g, '<br/>')

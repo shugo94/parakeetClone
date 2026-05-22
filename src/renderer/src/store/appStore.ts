@@ -74,6 +74,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }
     set({
       messages: [msg, ...messages].slice(0, 20),
+      streamingAnswer: '',
       appState: 'idle'
     })
   },
@@ -112,6 +113,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       transcript: '',
       error: null,
       appState: 'idle',
-      pinnedAnswer: null
+      pinnedAnswer: null,
+      messages: []
     })
 }))

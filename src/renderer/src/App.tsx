@@ -49,7 +49,7 @@ export default function App() {
     }
   }, [appendToken, finalizeAnswer, setAppState, setError])
 
-  // ── Global hotkey signals (fired from Electron main via IPC) ────────────────
+  // ── Global hotkey signals ──────────────────────────────────────────────────
   useEffect(() => {
     const off = window.api.onHotkey((action) => {
       switch (action) {
@@ -83,24 +83,15 @@ export default function App() {
 
   return (
     <div className="app">
-      {/* Top drag region — drag window from here */}
       <div className="drag-handle" />
-
-      {/* Main answer display */}
       <AnswerPanel />
-
-      {/* Transcript / manual input bar */}
       <TranscriptBar onManualSubmit={handleManualSubmit} />
-
-      {/* Bottom action bar */}
       <HotkeyBar
         onToggleListen={toggleListening}
         onClear={clearAll}
         onPin={pinCurrentAnswer}
         onHide={handleHide}
       />
-
-      {/* Settings overlay */}
       {showSettings && <SettingsModal />}
     </div>
   )

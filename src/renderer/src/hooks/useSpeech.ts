@@ -37,15 +37,20 @@ export function useSpeech() {
     const recorder = mediaRecorderRef.current
     if (!recorder || recorder.state === 'inactive') {
       cleanup()
+      mediaRecorderRef.current = null
       setAppState('idle')
       isTranscribingRef.current = false
       return
     }
 
-    await new Promise<void>((resolve) => {
-      recorder.onstop = () => resolve()
-      recorder.stop()
-    })
+    // Stop recorder with a 3s timeout fallback in case onstop never fires
+    await Promise.race([
+      new Promise<void>((resolve) => {
+        recorder.onstop = () => resolve()
+        recorder.stop()
+      }),
+      new Promise<void>((resolve) => setTimeout(resolve, 3000))
+    ])
 
     cleanup()
 
@@ -85,8 +90,17 @@ export function useSpeech() {
 
   const startListening = useCallback(async () => {
     if (isTranscribingRef.current) return
-    // Don't restart if already have a stream running
-    if (streamRef.current) return
+    // Force-cleanup any stale stream from a previous session
+    // (can happen if onstop didn't fire and streamRef was never cleared)
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop())
+      streamRef.current = null
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close()
+      audioContextRef.current = null
+    }
+    mediaRecorderRef.current = null
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
@@ -99,9 +113,10 @@ export function useSpeech() {
       analyser.smoothingTimeConstant = 0.8
       audioContext.createMediaStreamSource(stream).connect(analyser)
 
+      // Prefer plain webm — codec-suffixed types confuse Whisper API
       const mimeType =
-        ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'].find((t) =>
-          MediaRecorder.isTypeSupported(t)
+        ['audio/webm', 'audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/ogg'].find(
+          (t) => MediaRecorder.isTypeSupported(t)
         ) ?? ''
 
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)

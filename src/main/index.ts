@@ -447,7 +447,14 @@ app.whenReady().then(() => {
 
     const client = new OpenAI(clientOptions)
     const buffer = Buffer.from(arrayBuffer)
-    const file = await toFile(buffer, 'audio.webm', { type: mimeType || 'audio/webm' })
+
+    // Strip codec params (e.g. "audio/webm;codecs=opus" → "audio/webm")
+    const baseType = (mimeType || 'audio/webm').split(';')[0].trim()
+    const ext = baseType.includes('ogg') ? 'ogg'
+              : baseType.includes('mp4') ? 'mp4'
+              : 'webm'
+
+    const file = await toFile(buffer, `audio.${ext}`, { type: baseType })
     const model = cfg.provider === 'groq' ? 'whisper-large-v3-turbo' : 'whisper-1'
 
     const result = await client.audio.transcriptions.create({ file, model, language: 'en' })

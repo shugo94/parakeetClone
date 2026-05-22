@@ -10,6 +10,8 @@ const api = {
   // ── AI Streaming ────────────────────────────────────────────────────────────
   sendQuery: (transcript: string) => ipcRenderer.send('ai-query', { transcript }),
   abortQuery: () => ipcRenderer.send('ai-abort'),
+  transcribeAudio: (arrayBuffer: ArrayBuffer, mimeType: string) =>
+    ipcRenderer.invoke('transcribe-audio', arrayBuffer, mimeType),
 
   onAIToken: (cb: (token: string) => void) => {
     const fn = (_: Electron.IpcRendererEvent, token: string) => cb(token)
