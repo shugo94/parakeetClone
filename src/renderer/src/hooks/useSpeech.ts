@@ -1,9 +1,11 @@
 import { useCallback, useRef, useEffect } from 'react'
 import { useAppStore } from '../store/appStore'
 
-const SPEECH_THRESHOLD = 10  // avg frequency energy to count as speech
-const SILENCE_THRESHOLD = 8  // below this = silence
-const SILENCE_DURATION = 2000 // ms of silence before auto-submit
+const SPEECH_THRESHOLD = 20   // avg frequency energy to count as speech (higher = less noise false-triggers)
+const SILENCE_THRESHOLD = 12  // below this = silence
+const SILENCE_DURATION = 2500 // ms of silence before auto-submit
+const MIN_CHUNKS = 15         // at least ~1.5 s of audio before submitting
+const MIN_BLOB_BYTES = 8000   // skip blobs < 8 KB — too small for Whisper to process
 
 export function useSpeech() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -52,6 +54,9 @@ export function useSpeech() {
       new Promise<void>((resolve) => setTimeout(resolve, 3000))
     ])
 
+    // Small pause to ensure the final ondataavailable chunk is flushed
+    await new Promise<void>((resolve) => setTimeout(resolve, 150))
+
     cleanup()
 
     const chunks = audioChunksRef.current.splice(0)
@@ -64,6 +69,14 @@ export function useSpeech() {
     }
 
     const audioBlob = new Blob(chunks, { type: chunks[0].type || 'audio/webm' })
+
+    // Skip blobs that are too small — likely silence or noise, not real speech
+    if (audioBlob.size < MIN_BLOB_BYTES) {
+      setAppState('idle')
+      isTranscribingRef.current = false
+      return
+    }
+
     setAppState('thinking')
 
     try {
@@ -77,7 +90,13 @@ export function useSpeech() {
         setAppState('idle')
       }
     } catch (err: unknown) {
-      useAppStore.getState().setError((err as Error).message || 'Transcription failed.')
+      const message = (err as Error).message || 'Transcription failed.'
+      // In always-on mode, skip showing errors for short/empty audio — just reset quietly
+      if (useAppStore.getState().alwaysOn && message.includes('valid media')) {
+        setAppState('idle')
+      } else {
+        useAppStore.getState().setError(message)
+      }
     } finally {
       isTranscribingRef.current = false
     }
@@ -113,9 +132,9 @@ export function useSpeech() {
       analyser.smoothingTimeConstant = 0.8
       audioContext.createMediaStreamSource(stream).connect(analyser)
 
-      // Prefer plain webm — codec-suffixed types confuse Whisper API
+      // Prefer plain webm; mp4 as fallback for macOS compatibility
       const mimeType =
-        ['audio/webm', 'audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/ogg'].find(
+        ['audio/webm', 'audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/ogg'].find(
           (t) => MediaRecorder.isTypeSupported(t)
         ) ?? ''
 
@@ -143,7 +162,7 @@ export function useSpeech() {
         } else if (avg < SILENCE_THRESHOLD && hasSpeech) {
           silentMs += 200
           // Only auto-submit after real speech + enough audio chunks collected
-          if (silentMs >= SILENCE_DURATION && audioChunksRef.current.length > 10) {
+          if (silentMs >= SILENCE_DURATION && audioChunksRef.current.length >= MIN_CHUNKS) {
             doTranscribeRef.current()
           }
         }
@@ -191,11 +210,18 @@ export function useSpeech() {
   useEffect(() => {
     if (!alwaysOn) return
 
-    if (appState === 'idle' && !isTranscribingRef.current) {
-      // Delay restart so user can read the answer (1.5s)
+    if ((appState === 'idle' || appState === 'error') && !isTranscribingRef.current) {
+      // After an answer: 1.5s delay so user can read it
+      // After an error: 3s delay then clear error and restart
+      const delay = appState === 'error' ? 3000 : 1500
       restartTimerRef.current = setTimeout(() => {
-        if (alwaysOnRef.current) startListening()
-      }, 1500)
+        if (!alwaysOnRef.current) return
+        if (useAppStore.getState().appState === 'error') {
+          useAppStore.getState().setError(null) // clears error → appState becomes 'idle' → this effect re-fires
+        } else {
+          startListening()
+        }
+      }, delay)
     }
 
     return () => clearTimeout(restartTimerRef.current)

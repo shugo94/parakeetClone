@@ -206,7 +206,8 @@ async function runAIRequest(
       if (!event.sender.isDestroyed()) {
         event.sender.send('ai-done', null)
       }
-    } else if (cfg.provider === 'openai' || cfg.provider === 'groq' || cfg.provider === 'gemini') {
+    } else {
+      // openai / groq / gemini / openrouter — all use the OpenAI-compatible SDK
       const { default: OpenAI } = await import('openai')
 
       const baseURLMap: Record<string, string> = {
@@ -447,6 +448,11 @@ app.whenReady().then(() => {
 
     const client = new OpenAI(clientOptions)
     const buffer = Buffer.from(arrayBuffer)
+
+    // Guard: reject audio that's too small — Whisper will return 400 for these
+    if (buffer.length < 4000) {
+      return '' // return empty transcript, renderer will treat as no speech
+    }
 
     // Strip codec params (e.g. "audio/webm;codecs=opus" → "audio/webm")
     const baseType = (mimeType || 'audio/webm').split(';')[0].trim()
