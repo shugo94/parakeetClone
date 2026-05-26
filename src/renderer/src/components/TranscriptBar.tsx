@@ -64,7 +64,7 @@ export function TranscriptBar({ onManualSubmit }: Props) {
   }
 
   return (
-    <div className="transcript-bar" onClick={openInput} role="button" title="Click to type a question">
+    <div className="transcript-bar" onClick={openInput} role="button">
       {isListening && <span className="live-dot" aria-label="listening" />}
       <span className="transcript-text">
         {transcript ? (

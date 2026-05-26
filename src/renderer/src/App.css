@@ -9,6 +9,9 @@
   margin: 0;
   padding: 0;
   cursor: default !important;
+  /* Suppress any native browser tooltip that leaks through */
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 :root {

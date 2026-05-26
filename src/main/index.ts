@@ -69,7 +69,7 @@ function createOverlayWindow() {
     frame: false,
     alwaysOnTop: true,
     skipTaskbar: true,
-    resizable: true,
+    resizable: false,
     movable: true,
     hasShadow: false,
     // macOS: 'panel' windows are excluded from Exposé / screen recording
