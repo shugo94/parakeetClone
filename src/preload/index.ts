@@ -8,7 +8,10 @@ const api = {
   saveConfig: (config: Record<string, unknown>) => ipcRenderer.invoke('save-config', config),
 
   // ── AI Streaming ────────────────────────────────────────────────────────────
-  sendQuery: (transcript: string) => ipcRenderer.send('ai-query', { transcript }),
+  sendQuery: (
+    transcript: string,
+    history?: Array<{ role: 'user' | 'assistant'; content: string }>
+  ) => ipcRenderer.send('ai-query', { transcript, history: history ?? [] }),
   abortQuery: () => ipcRenderer.send('ai-abort'),
   transcribeAudio: (arrayBuffer: ArrayBuffer, mimeType: string) =>
     ipcRenderer.invoke('transcribe-audio', arrayBuffer, mimeType),

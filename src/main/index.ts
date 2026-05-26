@@ -124,9 +124,14 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-async function handleAIQuery(event: Electron.IpcMainEvent, payload: { transcript: string }) {
+type HistoryMessage = { role: 'user' | 'assistant'; content: string }
+
+async function handleAIQuery(
+  event: Electron.IpcMainEvent,
+  payload: { transcript: string; history?: HistoryMessage[] }
+) {
   const cfg = loadConfig()
-  const { transcript } = payload
+  const { transcript, history = [] } = payload
 
   if (!cfg.apiKey) {
     event.sender.send('ai-error', 'No API key set. Click ⚙ in the overlay to add your key.')
@@ -145,7 +150,7 @@ async function handleAIQuery(event: Electron.IpcMainEvent, payload: { transcript
 
   while (attempt <= MAX_RETRIES) {
     try {
-      await runAIRequest(event, cfg, transcript, systemPrompt, signal)
+      await runAIRequest(event, cfg, transcript, systemPrompt, signal, history)
       return
     } catch (err: unknown) {
       if ((err as Error)?.name === 'AbortError') return
@@ -180,7 +185,8 @@ async function runAIRequest(
   cfg: Config,
   transcript: string,
   systemPrompt: string,
-  signal: AbortSignal
+  signal: AbortSignal,
+  history: HistoryMessage[] = []
 ): Promise<void> {
   if (cfg.provider === 'anthropic') {
       const { default: Anthropic } = await import('@anthropic-ai/sdk')
@@ -191,7 +197,10 @@ async function runAIRequest(
           model: cfg.model || 'claude-3-5-sonnet-20241022',
           max_tokens: 600,
           system: systemPrompt,
-          messages: [{ role: 'user', content: transcript }]
+          messages: [
+            ...history,
+            { role: 'user', content: transcript }
+          ]
         },
         { signal }
       )
@@ -235,6 +244,7 @@ async function runAIRequest(
           stream: true,
           messages: [
             { role: 'system', content: systemPrompt },
+            ...history,
             { role: 'user', content: transcript }
           ]
         },

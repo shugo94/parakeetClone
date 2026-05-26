@@ -5,6 +5,7 @@ import { AnswerPanel } from './components/AnswerPanel'
 import { TranscriptBar } from './components/TranscriptBar'
 import { HotkeyBar } from './components/HotkeyBar'
 import { SettingsModal } from './components/SettingsModal'
+import { buildHistory } from './utils'
 
 export default function App() {
   const {
@@ -71,10 +72,11 @@ export default function App() {
   const handleManualSubmit = useCallback(
     (text: string) => {
       if (!text.trim()) return
+      const history = buildHistory(useAppStore.getState().messages)
       useAppStore.getState().setTranscript(text)
       clearStreaming()
       setAppState('thinking')
-      window.api.sendQuery(text.trim())
+      window.api.sendQuery(text.trim(), history)
     },
     [clearStreaming, setAppState]
   )

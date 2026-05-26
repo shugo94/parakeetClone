@@ -1,5 +1,6 @@
 import { useCallback, useRef, useEffect } from 'react'
 import { useAppStore } from '../store/appStore'
+import { buildHistory } from '../utils'
 
 const SPEECH_THRESHOLD = 20   // avg frequency energy to count as speech (higher = less noise false-triggers)
 const SILENCE_THRESHOLD = 12  // below this = silence
@@ -83,9 +84,10 @@ export function useSpeech() {
       const arrayBuffer = await audioBlob.arrayBuffer()
       const transcript = await window.api.transcribeAudio(arrayBuffer, audioBlob.type)
       if (transcript?.trim()) {
+        const history = buildHistory(useAppStore.getState().messages)
         setTranscript(transcript)
         clearStreaming()
-        window.api.sendQuery(transcript.trim())
+        window.api.sendQuery(transcript.trim(), history)
       } else {
         setAppState('idle')
       }
