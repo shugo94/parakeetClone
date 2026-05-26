@@ -14,6 +14,13 @@
   user-select: none;
 }
 
+/* Always show text cursor inside input fields */
+input, textarea {
+  cursor: text !important;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 :root {
   --bg:           rgba(8, 10, 20, 0.55);
   --bg-hover:     rgba(255, 255, 255, 0.05);
