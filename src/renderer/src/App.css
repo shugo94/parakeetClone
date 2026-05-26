@@ -632,6 +632,86 @@ li {
 }
 .sm-eye:hover { background: var(--bg-hover); }
 
+/* ═══════════════════════════════════════════════════════════════
+   Mode Bar — Interview preset selector
+   ═══════════════════════════════════════════════════════════════ */
+.mode-bar-wrapper {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  background: rgba(0,0,0,0.12);
+  -webkit-app-region: no-drag;
+}
+
+/* Main category row */
+.mode-bar {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 5px 8px 4px;
+  overflow-x: auto;
+}
+.mode-bar::-webkit-scrollbar { display: none; }
+
+.mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  -webkit-app-region: no-drag;
+}
+.mode-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-dim);
+}
+.mode-btn.mode-active {
+  background: rgba(129,140,248,0.15);
+  border-color: rgba(129,140,248,0.35);
+  color: var(--accent-light);
+}
+
+.mode-emoji { font-size: 12px; line-height: 1; }
+.mode-label { font-weight: 500; }
+
+/* Sub-mode row */
+.sub-mode-bar {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 8px 5px;
+  overflow-x: auto;
+}
+.sub-mode-bar::-webkit-scrollbar { display: none; }
+
+.sub-mode-btn {
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 10px;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  -webkit-app-region: no-drag;
+}
+.sub-mode-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-dim);
+  border-color: var(--border-bright);
+}
+.sub-mode-btn.sub-active {
+  background: rgba(129,140,248,0.12);
+  border-color: rgba(129,140,248,0.4);
+  color: var(--accent-light);
+  font-weight: 500;
+}
+
 .sm-info {
   font-size: 11px;
   color: var(--text-muted);

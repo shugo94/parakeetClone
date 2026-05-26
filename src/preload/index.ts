@@ -10,8 +10,9 @@ const api = {
   // ── AI Streaming ────────────────────────────────────────────────────────────
   sendQuery: (
     transcript: string,
-    history?: Array<{ role: 'user' | 'assistant'; content: string }>
-  ) => ipcRenderer.send('ai-query', { transcript, history: history ?? [] }),
+    history?: Array<{ role: 'user' | 'assistant'; content: string }>,
+    mode?: string
+  ) => ipcRenderer.send('ai-query', { transcript, history: history ?? [], mode: mode ?? '' }),
   abortQuery: () => ipcRenderer.send('ai-abort'),
   transcribeAudio: (arrayBuffer: ArrayBuffer, mimeType: string) =>
     ipcRenderer.invoke('transcribe-audio', arrayBuffer, mimeType),

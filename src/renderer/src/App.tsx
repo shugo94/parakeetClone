@@ -5,6 +5,7 @@ import { AnswerPanel } from './components/AnswerPanel'
 import { TranscriptBar } from './components/TranscriptBar'
 import { HotkeyBar } from './components/HotkeyBar'
 import { SettingsModal } from './components/SettingsModal'
+import { ModeBar } from './components/ModeBar'
 import { buildHistory } from './utils'
 
 export default function App() {
@@ -72,11 +73,12 @@ export default function App() {
   const handleManualSubmit = useCallback(
     (text: string) => {
       if (!text.trim()) return
-      const history = buildHistory(useAppStore.getState().messages)
+      const { messages, interviewMode } = useAppStore.getState()
+      const history = buildHistory(messages)
       useAppStore.getState().setTranscript(text)
       clearStreaming()
       setAppState('thinking')
-      window.api.sendQuery(text.trim(), history)
+      window.api.sendQuery(text.trim(), history, interviewMode)
     },
     [clearStreaming, setAppState]
   )
@@ -88,6 +90,7 @@ export default function App() {
       <div className="drag-handle" />
       <AnswerPanel />
       <TranscriptBar onManualSubmit={handleManualSubmit} />
+      <ModeBar />
       <HotkeyBar
         onToggleListen={toggleListening}
         onClear={clearAll}

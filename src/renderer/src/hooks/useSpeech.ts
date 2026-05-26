@@ -84,10 +84,11 @@ export function useSpeech() {
       const arrayBuffer = await audioBlob.arrayBuffer()
       const transcript = await window.api.transcribeAudio(arrayBuffer, audioBlob.type)
       if (transcript?.trim()) {
-        const history = buildHistory(useAppStore.getState().messages)
+        const { messages, interviewMode } = useAppStore.getState()
+        const history = buildHistory(messages)
         setTranscript(transcript)
         clearStreaming()
-        window.api.sendQuery(transcript.trim(), history)
+        window.api.sendQuery(transcript.trim(), history, interviewMode)
       } else {
         setAppState('idle')
       }

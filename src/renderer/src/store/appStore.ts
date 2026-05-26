@@ -38,6 +38,10 @@ interface AppStore {
   alwaysOn: boolean
   toggleAlwaysOn: () => void
 
+  // Interview mode preset
+  interviewMode: string
+  setInterviewMode: (mode: string) => void
+
   // Settings panel visibility
   showSettings: boolean
   setShowSettings: (v: boolean) => void
@@ -103,6 +107,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   alwaysOn: false,
   toggleAlwaysOn: () => set((s) => ({ alwaysOn: !s.alwaysOn })),
+
+  interviewMode: 'java',
+  setInterviewMode: (interviewMode) => set({ interviewMode }),
 
   showSettings: false,
   setShowSettings: (showSettings) => set({ showSettings }),
